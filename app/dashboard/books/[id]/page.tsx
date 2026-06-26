@@ -1,5 +1,6 @@
 import{createClient} from '@/lib/supabase/server'
 import{notFound} from 'next/navigation'
+import Link from'next/link'
 
 export default async function BookDetailPage({params, }: {params: Promise<{id: string}>}){
     const{id}=await params
@@ -11,6 +12,13 @@ export default async function BookDetailPage({params, }: {params: Promise<{id: s
     .eq('id', id)
     .single()
 
+    const{data: entries} =await supabase
+    .from('entries')
+    .select('*')
+    .eq('book_id', id)
+    .eq('is_approved', true)
+    .order('created_at', {ascending: false})
+
     if(error || !book){
         notFound()
     }
@@ -18,8 +26,22 @@ export default async function BookDetailPage({params, }: {params: Promise<{id: s
     return(
         <main className ="p-8 max-w-2xl mx-auto">
             <BookHeader book={book}/>
-            <div className="mt-8">
-                <p className="text-gray-500">No entries yet.</p>
+            <Link href={`/dashboard/books/${book.id}/moderate`} className="inline-block mt-4 text-blue-600 underline">
+            Moderate Contributions ➡️
+            </Link>
+            <div className="mt-8 space-y-4">
+                {entries && entries.length > 0 ? (
+                    entries.map((entry) => (
+                        <div key={entry.id} className="border rounded p-4">
+                            <p className ="font-semibold text-sm text-gray-600">{entry.contributor_name}</p>
+                            {entry.text_response && <p className ="mt-1">{entry.text_response}</p>}
+                            {entry.photo_url && (<img src={entry.photo_url} alt="" className="mt-2 max-w-xs rounded" />)}
+                            {entry.voice_url && <audio controls src={entry.voice_url} className="mt-2" />}
+                        </div>
+                    ))
+                ) : (
+                    <p className ="text-gray-500">No entries yeat.</p>
+                )}
             </div>
         </main>
     )
@@ -51,5 +73,7 @@ function BookHeader({book} : {book: any}){
         </div>
     )
 }
+
+
        
 
