@@ -1,3 +1,5 @@
+
+import ShareLink from './ShareLink'
 import{createClient} from '@/lib/supabase/server'
 import{notFound} from 'next/navigation'
 import Link from'next/link'
@@ -35,8 +37,16 @@ export default async function BookDetailPage({params, }: {params: Promise<{id: s
     }
 
     return(
+       
         <main className ="p-8 max-w-2xl mx-auto">
             <BookHeader book={book}/>
+            <div className="flex items-center gap-3 mt-4">
+                <ShareLink bookId={book.id}/>
+                <Link href="/dashboard/new" className="text-sm text-blue-600 underline">
+                + Create Another Slam Book
+                </Link>
+            </div>
+
             <Link href={`/dashboard/books/${book.id}/moderate`} className="inline-block mt-4 text-blue-600 underline">
             Moderate Contributions ➡️
             </Link>
@@ -77,6 +87,7 @@ export default async function BookDetailPage({params, }: {params: Promise<{id: s
 }
 
 function BookHeader({book} : {book: any}){
+     
     if(book.template === 'scrapbook'){
         return(
             <div className="border-4 border-dashed border-amber-400 bg-amber-50 p-6 rounded-lg">
@@ -116,6 +127,8 @@ function BookHeader({book} : {book: any}){
             </div>
         )
     }
+
+        
 
     return(
         <div className="border-b pb-4">
