@@ -19,6 +19,28 @@ export default function NewBookPage(){
     const router=useRouter()
     const supabase=createClient()
 
+    const[questions, setQuestions]=useState<string[]>([
+        'What is my favourite food?',
+        'Where do you see me in 10 years?',
+        'Write something you dislike about me (Or hate hehe)',
+        'Write something you love about me',
+        'What is your favourite memory of us?',
+        'Leave me a fun nickname',
+        'Do you regret meeting me(If yes Why?, if Not Why not?)'
+    ])
+
+    function updateQuestion(index: number, value: string){
+        setQuestions((prev) => prev.map((q,i) => (i===index ? value:q)))
+    }
+
+    function addQuestion(){
+        setQuestions((prev) => [...prev, ''])
+    }
+
+    function removeQuestion(index: number){
+        setQuestions((prev)=> prev.filter((_, i) => i !== index))
+    }
+
     useEffect(() => {
         async function loadTemplates(){
             const{data} = await supabase.from('templates').select('id, name, description')
@@ -49,6 +71,7 @@ export default function NewBookPage(){
             title,
             template: selectedTemplate?.name??'classic',
             privacy_level: privacyLevel,
+            questions: questions.filter((q)=> q.trim() !== '')
         })
         .select()
         .single()
@@ -84,6 +107,25 @@ export default function NewBookPage(){
                             </option>
                         ))}
                         </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-2">Slam Book Questions</label>
+                    {questions.map((q, i) => (
+                        <div key={i} className="flex gap-2 mb-2">
+                            <input
+                            type="text"
+                            value={q}
+                            onChange={(e) => updateQuestion(i, e.target.value)}
+                            className="flex-1 border rounded p-2 text-sm"/>
+                            <button type="button" onClick={()=> removeQuestion(i)} className="text-red-500 px-2">
+                                ❌
+                            </button>
+                        </div>
+                    ))}
+                    <button type="button" onClick={addQuestion} className="text-sm text-blue-600 underline">
+                        + Add a question
+                    </button>
                 </div>
 
                 <div>

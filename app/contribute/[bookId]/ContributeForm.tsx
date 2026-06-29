@@ -3,9 +3,11 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function ContributeForm({ bookId }: { bookId: string }) {
+export default function ContributeForm({ bookId, questions }: { bookId: string
+  questions:string[]
+ }) {
   const [name, setName] = useState('')
-  const [message, setMessage] = useState('')
+  const[answers, setAnswers]=useState<string[]>(questions.map(()=>''))
   const [photo, setPhoto] = useState<File | null>(null)
   const[isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -17,17 +19,17 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
   const chunksRef=useRef<Blob[]>([])
   const supabase = createClient()
 
+  function updateAnswer(index: number, value: string){
+    setAnswers((prev)=> prev.map((a,i)=> (i=== index ? value:a)))
+  }
+
   async function startRecording(){
     const stream=await navigator.mediaDevices.getUserMedia({audio:true})
     const recorder=new MediaRecorder(stream)
     chunksRef.current=[]
 
     recorder.ondataavailable=(e)=> chunksRef.current.push(e.data)
-    recorder.onstop =() => {
-      const blob=new Blob(chunksRef.current, {type: 'audio/webm'})
-      setAudioBlob(blob)
-    }
-
+    recorder.onstop =() => setAudioBlob(new Blob(chunksRef.current, {type: 'audio/webm'}))
     recorder.start()
     mediaRecorderRef.current=recorder
     setIsRecording(true)
@@ -55,11 +57,7 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
         .upload(fileName, photo)
 
         if(uploadError) throw uploadError
-
-        const{data: publicUrlData}=supabase.storage
-           .from('entry-photos')
-           .getPublicUrl(fileName)
-        photoUrl=publicUrlData.publicUrl
+        photoUrl=supabase.storage.from('entry-photos').getPublicUrl(fileName).data.publicUrl
       }
 
       if(audioBlob){
@@ -70,19 +68,19 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
 
         if(uploadError) throw uploadError
 
-        const{data: publicUrlData}=supabase.storage
-          .from('entry-voices')
-          .getPublicUrl(fileName)
-        voiceUrl=publicUrlData.publicUrl
+        voiceUrl=supabase.storage.from('entry-voices').getPublicUrl(fileName).data.publicUrl
       }
-      
-      const { error: insertError } = await supabase.from('entries').insert({
-        book_id: bookId,
+
+      const rows=questions.map((questions, i)=> ({
+        book_id:bookId,
         contributor_name: name,
-        text_response: message,
-        photo_url: photoUrl,
-        voice_url: voiceUrl,
-      })
+        prompt_question: questions,
+        text_response: answers[i],
+        photo_url: i===0?photoUrl: null,
+        voice_url: i===0?voiceUrl: null,
+      }))
+      
+      const { error: insertError } = await supabase.from('entries').insert(rows)
   
       if (insertError) throw insertError
   
@@ -97,13 +95,13 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
   if (submitted) {
     return (
       <div className="p-4 bg-green-50 border border-green-300 rounded text-green-800">
-        Thanks, {name}! Your message has been submitted for review.
+        Thanks, {name}! Your page has been submitted for review.
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <input
         type="text"
         placeholder="Your name"
@@ -112,15 +110,20 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
         className="w-full border rounded p-2"
         required
       />
-      <textarea
-        placeholder="Write your message..."
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        className="w-full border rounded p-2 h-32"
-        required
-      />
+      {questions.map((q,i)=> (
+        <div key={i}>
+          <label className="block text-sm font-medium mb-1">{q}</label>
+          <textarea
+          value={answers[i]}
+          onChange={(e)=> updateAnswer(i, e.target.value)}
+          className="w-full border rounded p-2 h-20"
+          required
+          />
+        </div>
+      ))}
+      
       <div>
-        <label className="block text-sm font-medium mb-1">Photo (Optional)</label>
+        <label className="block text-sm font-medium mb-1">Your favourite photo of us</label>
         <input
         type="file"
         accept="image/*"
@@ -128,7 +131,7 @@ export default function ContributeForm({ bookId }: { bookId: string }) {
         className="w-full"/>
       </div>
       <div>
-        <label className="block text-sm font-medium mb-1">Voice note(Optional)</label>
+        <label className="block text-sm font-medium mb-1">Leave me some voice note?</label>
         {!isRecording && !audioBlob && (
           <button
           type="button"
